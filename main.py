@@ -138,7 +138,7 @@ class PodcastIntelligencePro:
         return enriched_podcasts
 
 
-def create_excel(results: List[Dict[str, Any]]):
+def create_excel(results: List[Dict[str, Any]], filepath: str):
     """Create Excel file"""
     try:
         wb = Workbook()
@@ -179,8 +179,9 @@ def create_excel(results: List[Dict[str, Any]]):
         for col in range(1, 17):
             ws.column_dimensions[chr(64 + col)].width = 18
         
-        wb.save("podcast_results.xlsx")
-        logger.info(f"Excel saved with {len(results)} podcasts")
+        os.makedirs(os.path.dirname(filepath), exist_ok=True)
+        wb.save(filepath)
+        logger.info(f"Excel saved to: {filepath}")
         
     except Exception as e:
         logger.error(f"Excel error: {str(e)}")
@@ -205,7 +206,10 @@ async def run():
         logger.info(f"Processed {len(results)} podcasts")
         
         if results:
-            create_excel(results)
+            kv_store_path = os.getenv("APIFY_DEFAULT_KEY_VALUE_STORE_PATH", "/tmp/kv")
+            excel_filepath = os.path.join(kv_store_path, "podcast_results.xlsx")
+            create_excel(results, excel_filepath)
+            logger.info(f"Excel file available at: {excel_filepath}")
             for item in results:
                 print(json.dumps(item, default=str))
         
