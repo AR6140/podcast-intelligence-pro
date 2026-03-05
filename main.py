@@ -3,6 +3,7 @@ import json
 import logging
 import os
 import re
+import csv
 from typing import List, Dict, Any, Optional
 from datetime import datetime
 from urllib.parse import urlencode
@@ -25,53 +26,41 @@ class PodcastIntelligencePro:
         if self.client:
             await self.client.aclose()
     
-    async def search_itunes(self, search_query: str, country: str = "US", max_results: int = 50) -> List[Dict[str, Any]]:
+    async def search_itunes(self, search_query: str, country: str = "US", max_results: int = 50) -> List[Dict]:
         try:
             params = {"term": search_query, "country": country, "media": "podcast", "limit": min(max_results, 200), "entity": "podcast"}
-            url = f"{self.itunes_base_url}/search?{urlencode(params)}"
-            response = await self.client.get(url)
-            response.raise_for_status()
+            response = await self.client.get(f"{self.itunes_base_url}/search?{urlencode(params)}")
             data = response.json()
             
-            podcasts = []
-            for result in data.get("results", []):
-                if result.get("kind") == "podcast":
-                    podcasts.append({
-                        "itunes_id": result.get("collectionId"),
-                        "title": result.get("collectionName"),
-                        "host_name": result.get("artistName"),
-                        "artist": result.get("artistName"),
-                        "description": result.get("description", ""),
-                        "feed_url": result.get("feedUrl"),
-                        "country": country,
-                        "genre": result.get("primaryGenreName"),
-                        "track_count": result.get("trackCount", 0),
-                        "release_date": result.get("releaseDate"),
-                        "itunes_url": result.get("collectionViewUrl"),
-                    })
-            return podcasts
+            return [{
+                "itunes_id": r.get("collectionId"),
+                "title": r.get("collectionName"),
+                "host_name": r.get("artistName"),
+                "artist": r.get("artistName"),
+                "description": r.get("description", ""),
+                "feed_url": r.get("feedUrl"),
+                "country": country,
+                "genre": r.get("primaryGenreName"),
+                "track_count": r.get("trackCount", 0),
+                "release_date": r.get("releaseDate"),
+                "itunes_url": r.get("collectionViewUrl"),
+            } for r in data.get("results", []) if r.get("kind") == "podcast"]
         except Exception as e:
             logger.error(f"Error: {str(e)}")
             return []
     
-    async def scrape_website(self, podcast_url: str) -> Dict[str, Any]:
+    async def get_contact_email(self, podcast_url: str) -> str:
         try:
             if not podcast_url:
-                return {}
+                return ""
             response = await self.client.get(podcast_url, follow_redirects=True, timeout=10)
-            soup = BeautifulSoup(response.text, "html.parser")
-            text = soup.get_text()
-            
-            result = {}
+            text = BeautifulSoup(response.text, "html.parser").get_text()
             emails = re.findall(r'\b[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Z|a-z]{2,}\b', text)
-            if emails:
-                result["contact_email"] = emails[0]
-            
-            return result
+            return emails[0] if emails else ""
         except:
-            return {}
+            return ""
     
-    async def main(self, input_data: Dict[str, Any]) -> List[Dict[str, Any]]:
+    async def main(self, input_data: Dict) -> List[Dict]:
         podcasts = await self.search_itunes(
             search_query=input_data.get("searchQuery", ""),
             country=input_data.get("country", "US"),
@@ -80,14 +69,29 @@ class PodcastIntelligencePro:
         
         results = []
         for podcast in podcasts:
-            enriched = podcast.copy()
-            if podcast.get("itunes_url"):
-                website_data = await self.scrape_website(podcast.get("itunes_url"))
-                enriched.update(website_data)
-            enriched["extracted_at"] = datetime.utcnow().isoformat()
-            results.append(enriched)
+            podcast["contact_email"] = await self.get_contact_email(podcast.get("itunes_url"))
+            podcast["extracted_at"] = datetime.utcnow().isoformat()
+            results.append(podcast)
         
         return results
+
+def save_csv(results: List[Dict], filepath: str):
+    """Save results to CSV file"""
+    try:
+        if not results:
+            return
+        
+        keys = results[0].keys()
+        os.makedirs(os.path.dirname(filepath), exist_ok=True)
+        
+        with open(filepath, 'w', newline='', encoding='utf-8') as f:
+            writer = csv.DictWriter(f, fieldnames=keys)
+            writer.writeheader()
+            writer.writerows(results)
+        
+        logger.info(f"CSV saved: {filepath}")
+    except Exception as e:
+        logger.error(f"Error saving CSV: {str(e)}")
 
 async def run():
     input_file = os.getenv("APIFY_INPUT_FILE")
@@ -105,8 +109,12 @@ async def run():
     
     try:
         results = await actor.main(input_data)
-        for result in results:
-            print(json.dumps(result, default=str))
+        logger.info(f"Extracted {len(results)} podcasts")
+        
+        if results:
+            kv_path = os.getenv("APIFY_DEFAULT_KEY_VALUE_STORE_PATH", "/tmp/kv")
+            csv_file = os.path.join(kv_path, "podcast_results.csv")
+            save_csv(results, csv_file)
     finally:
         await actor.cleanup()
 
