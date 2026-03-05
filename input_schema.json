@@ -16,7 +16,7 @@
       "description": "Search term for podcasts. Examples: technology, business marketing",
       "type": "string",
       "default": "technology",
-      "editor": "textinput"
+      "editor": "textfield"
     },
     "country": {
       "title": "Country Code",
@@ -30,13 +30,13 @@
       "title": "Language (Optional)",
       "description": "Language filter",
       "type": "string",
-      "editor": "textinput"
+      "editor": "textfield"
     },
     "genreId": {
       "title": "Genre ID (Optional)",
       "description": "iTunes genre ID",
       "type": "integer",
-      "editor": "number"
+      "editor": "textfield"
     },
     "maxResults": {
       "title": "Max Results",
@@ -45,46 +45,44 @@
       "minimum": 1,
       "maximum": 200,
       "default": 50,
-      "editor": "number"
+      "editor": "textfield"
     },
     "feedUrls": {
       "title": "RSS Feed URLs",
-      "description": "List of RSS feed URLs",
+      "description": "List of RSS feed URLs as JSON array",
       "type": "array",
       "items": {
         "type": "string"
       },
-      "editor": "json"
+      "editor": "textarea"
     },
     "podcastIds": {
       "title": "iTunes Podcast IDs",
-      "description": "List of iTunes podcast IDs",
+      "description": "List of iTunes podcast IDs as JSON array",
       "type": "array",
       "items": {
         "type": "integer"
       },
-      "editor": "json"
+      "editor": "textarea"
     },
     "includeEpisodes": {
       "title": "Include Episodes",
       "description": "Extract episode data",
       "type": "boolean",
-      "default": true,
-      "editor": "checkbox"
+      "default": true
     },
     "maxEpisodesPerPodcast": {
       "title": "Max Episodes Per Podcast",
       "description": "Limit episodes per podcast",
       "type": "integer",
       "minimum": 1,
-      "editor": "number"
+      "editor": "textfield"
     },
     "debugMode": {
       "title": "Debug Mode",
       "description": "Enable detailed logging",
       "type": "boolean",
-      "default": false,
-      "editor": "checkbox"
+      "default": false
     }
   },
   "required": ["mode"]
