@@ -2,13 +2,14 @@ import asyncio
 import json
 import logging
 import os
+import sys
 from typing import List, Dict, Any, Optional
 from datetime import datetime
 from urllib.parse import urlencode
 import httpx
 import feedparser
 
-logging.basicConfig(level=logging.INFO)
+logging.basicConfig(level=logging.INFO, stream=sys.stdout)
 logger = logging.getLogger(__name__)
 
 class PodcastIntelligencePro:
@@ -61,6 +62,7 @@ class PodcastIntelligencePro:
                     }
                     podcasts.append(podcast)
             
+            logger.info(f"Found {len(podcasts)} podcasts")
             return podcasts
         except Exception as e:
             logger.error(f"Error searching iTunes: {str(e)}")
@@ -143,15 +145,18 @@ async def run():
     
     input_file = os.getenv("APIFY_INPUT_FILE")
     if input_file and os.path.exists(input_file):
-        with open(input_file, 'r') as f:
-            input_data = json.load(f)
+        try:
+            with open(input_file, 'r') as f:
+                input_data = json.load(f)
+        except Exception as e:
+            logger.error(f"Error reading input file: {e}")
     
     if not input_data:
         input_data = {
             "mode": "search",
             "searchQuery": "technology",
             "country": "US",
-            "maxResults": 10,
+            "maxResults": 5,
             "includeEpisodes": True
         }
     
@@ -162,12 +167,24 @@ async def run():
     
     try:
         results = await intelligence.main(input_data)
-        output_data = {
-            "results": results,
-            "total_results": len(results),
-            "timestamp": datetime.utcnow().isoformat()
-        }
-        print(json.dumps(output_data, indent=2, default=str))
+        logger.info(f"Successfully processed {len(results)} podcasts")
+        
+        dataset_dir = os.getenv("APIFY_DEFAULT_DATASET_PATH", "/tmp/dataset")
+        os.makedirs(dataset_dir, exist_ok=True)
+        
+        output_file = os.path.join(dataset_dir, "results.jsonl")
+        with open(output_file, 'w') as f:
+            for result in results:
+                f.write(json.dumps(result, default=str) + '\n')
+        
+        logger.info(f"Saved {len(results)} results to {output_file}")
+        
+        for result in results:
+            print(json.dumps(result, default=str))
+        
+    except Exception as e:
+        logger.error(f"Fatal error: {str(e)}", exc_info=True)
+        raise
     finally:
         await intelligence.cleanup()
 
