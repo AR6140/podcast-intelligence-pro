@@ -2,7 +2,6 @@ import asyncio
 import json
 import logging
 import os
-import sys
 import re
 from typing import List, Dict, Any, Optional
 from datetime import datetime
@@ -11,9 +10,9 @@ import httpx
 import feedparser
 from bs4 import BeautifulSoup
 from openpyxl import Workbook
-from openpyxl.styles import Font, PatternFill, Alignment
+from openpyxl.styles import Font, PatternFill
 
-logging.basicConfig(level=logging.INFO, stream=sys.stdout)
+logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
 class PodcastIntelligencePro:
@@ -67,7 +66,6 @@ class PodcastIntelligencePro:
                     }
                     podcasts.append(podcast)
             
-            logger.info(f"Found {len(podcasts)} podcasts")
             return podcasts
         except Exception as e:
             logger.error(f"Error: {str(e)}")
@@ -78,12 +76,8 @@ class PodcastIntelligencePro:
             response = await self.client.get(feed_url, follow_redirects=True, timeout=15)
             response.raise_for_status()
             feed = feedparser.parse(response.text)
-            
-            if not feed.get("feed"):
-                return {}
-            
-            return {"total_episodes": len(feed.get("entries", []))}
-        except Exception as e:
+            return {"total_episodes": len(feed.get("entries", []))} if feed.get("feed") else {}
+        except:
             return {"total_episodes": 0}
     
     async def scrape_podcast_website(self, podcast_url: str) -> Dict[str, Any]:
@@ -92,8 +86,6 @@ class PodcastIntelligencePro:
                 return {}
             
             response = await self.client.get(podcast_url, follow_redirects=True, timeout=10)
-            response.raise_for_status()
-            
             soup = BeautifulSoup(response.text, "html.parser")
             text = soup.get_text()
             
@@ -101,7 +93,6 @@ class PodcastIntelligencePro:
             
             email_pattern = r'\b[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Z|a-z]{2,}\b'
             emails = re.findall(email_pattern, text)
-            
             if emails:
                 contact_info["contact_email"] = emails[0]
             
@@ -111,21 +102,15 @@ class PodcastIntelligencePro:
                 if email and "@" in email:
                     contact_info["host_email"] = email
             
-            name_pattern = r'(?:Hosted by|Host|Creator|Created by)\s+([A-Z][a-z]+ (?:[A-Z][a-z]+)?)'
-            names = re.findall(name_pattern, text)
-            if names:
-                contact_info["contact_name"] = names[0]
-            
             return contact_info
-        except Exception as e:
+        except:
             return {}
     
-    async def enrich_podcast_data(self, podcast: Dict[str, Any], include_episodes: bool = True,
-                                  max_episodes: Optional[int] = None) -> Dict[str, Any]:
+    async def enrich_podcast_data(self, podcast: Dict[str, Any], include_episodes: bool = True) -> Dict[str, Any]:
         enriched = podcast.copy()
         
         if podcast.get("feed_url") and include_episodes:
-            rss_result = await self.parse_rss_feed(podcast["feed_url"], max_episodes)
+            rss_result = await self.parse_rss_feed(podcast["feed_url"])
             enriched["total_episodes"] = rss_result.get("total_episodes", 0)
         
         if podcast.get("itunes_url"):
@@ -136,42 +121,33 @@ class PodcastIntelligencePro:
         return enriched
     
     async def main(self, input_data: Dict[str, Any]) -> List[Dict[str, Any]]:
-        mode = input_data.get("mode", "search")
-        podcasts = []
-        
-        if mode == "search":
-            podcasts = await self.search_itunes(
-                search_query=input_data.get("searchQuery", ""),
-                country=input_data.get("country", "US"),
-                language=input_data.get("language"),
-                genre_id=input_data.get("genreId"),
-                max_results=input_data.get("maxResults", 50)
-            )
+        podcasts = await self.search_itunes(
+            search_query=input_data.get("searchQuery", ""),
+            country=input_data.get("country", "US"),
+            max_results=input_data.get("maxResults", 50)
+        )
         
         enriched_podcasts = []
         for podcast in podcasts:
             enriched = await self.enrich_podcast_data(
                 podcast,
-                include_episodes=input_data.get("includeEpisodes", True),
-                max_episodes=input_data.get("maxEpisodesPerPodcast")
+                include_episodes=input_data.get("includeEpisodes", True)
             )
             enriched_podcasts.append(enriched)
         
         return enriched_podcasts
 
 
-def save_excel_file(results: List[Dict[str, Any]]):
-    """Save results to Excel file"""
+def create_excel(results: List[Dict[str, Any]]):
+    """Create Excel file"""
     try:
         wb = Workbook()
         ws = wb.active
         ws.title = "Podcasts"
         
-        headers = [
-            "iTunes ID", "Title", "Host Name", "Host Email", "Contact Name",
-            "Contact Email", "Artist", "Description", "Genre", "Track Count",
-            "Release Date", "Country", "Feed URL", "iTunes URL", "Total Episodes", "Extracted At"
-        ]
+        headers = ["iTunes ID", "Title", "Host Name", "Host Email", "Contact Name",
+                   "Contact Email", "Artist", "Description", "Genre", "Track Count",
+                   "Release Date", "Country", "Feed URL", "iTunes URL", "Total Episodes", "Extracted At"]
         
         header_fill = PatternFill(start_color="4472C4", end_color="4472C4", fill_type="solid")
         header_font = Font(bold=True, color="FFFFFF")
@@ -201,14 +177,13 @@ def save_excel_file(results: List[Dict[str, Any]]):
             ws.cell(row=row_num, column=16).value = result.get("extracted_at")
         
         for col in range(1, 17):
-            ws.column_dimensions[chr(64 + col)].width = 20
+            ws.column_dimensions[chr(64 + col)].width = 18
         
-        filename = "podcast_results.xlsx"
-        wb.save(filename)
-        logger.info(f"Excel saved: {filename}")
+        wb.save("podcast_results.xlsx")
+        logger.info(f"Excel saved with {len(results)} podcasts")
         
     except Exception as e:
-        logger.error(f"Error saving Excel: {str(e)}")
+        logger.error(f"Excel error: {str(e)}")
 
 
 async def run():
@@ -220,29 +195,22 @@ async def run():
             input_data = json.load(f)
     
     if not input_data:
-        input_data = {
-            "mode": "search",
-            "searchQuery": "technology",
-            "country": "US",
-            "maxResults": 5,
-            "includeEpisodes": True
-        }
-    
-    logger.info(f"Input: {json.dumps(input_data)}")
+        input_data = {"mode": "search", "searchQuery": "technology", "country": "US", "maxResults": 5, "includeEpisodes": True}
     
     intelligence = PodcastIntelligencePro()
     await intelligence.initialize()
     
     try:
         results = await intelligence.main(input_data)
-        logger.info(f"Extracted {len(results)} podcasts")
+        logger.info(f"Processed {len(results)} podcasts")
         
         if results:
-            save_excel_file(results)
-            print(json.dumps(results, default=str, indent=2))
+            create_excel(results)
+            for item in results:
+                print(json.dumps(item, default=str))
         
     except Exception as e:
-        logger.error(f"Error: {str(e)}", exc_info=True)
+        logger.error(f"Fatal: {str(e)}")
     finally:
         await intelligence.cleanup()
 
