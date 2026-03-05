@@ -67,10 +67,10 @@ class PodcastIntelligencePro:
                     }
                     podcasts.append(podcast)
             
-            logger.info(f"Found {len(podcasts)} podcasts on iTunes")
+            logger.info(f"Found {len(podcasts)} podcasts")
             return podcasts
         except Exception as e:
-            logger.error(f"Error searching iTunes: {str(e)}")
+            logger.error(f"Error: {str(e)}")
             return []
     
     async def parse_rss_feed(self, feed_url: str, max_episodes: Optional[int] = None) -> Dict[str, Any]:
@@ -82,20 +82,9 @@ class PodcastIntelligencePro:
             if not feed.get("feed"):
                 return {}
             
-            feed_data = feed["feed"]
-            episodes = []
-            for entry in feed.get("entries", [])[:max_episodes or None]:
-                episode = {
-                    "title": entry.get("title", ""),
-                    "description": entry.get("description", ""),
-                    "link": entry.get("link", ""),
-                    "published": entry.get("published", ""),
-                }
-                episodes.append(episode)
-            
-            return {"episodes": episodes, "total_episodes": len(episodes)}
+            return {"total_episodes": len(feed.get("entries", []))}
         except Exception as e:
-            return {"episodes": [], "total_episodes": 0}
+            return {"total_episodes": 0}
     
     async def scrape_podcast_website(self, podcast_url: str) -> Dict[str, Any]:
         try:
@@ -168,104 +157,96 @@ class PodcastIntelligencePro:
             )
             enriched_podcasts.append(enriched)
         
-        logger.info(f"Total podcasts enriched: {len(enriched_podcasts)}")
         return enriched_podcasts
 
 
-def create_excel(results: List[Dict[str, Any]], filename: str):
-    """Create Excel file with podcast data"""
-    logger.info(f"Creating Excel file: {filename}")
-    
-    wb = Workbook()
-    ws = wb.active
-    ws.title = "Podcasts"
-    
-    headers = [
-        "iTunes ID", "Title", "Host Name", "Host Email", "Contact Name",
-        "Contact Email", "Artist", "Description", "Genre", "Episode Count",
-        "Track Count", "Release Date", "Country", "Feed URL", "iTunes URL",
-        "Total Episodes", "Extracted At"
-    ]
-    
-    header_fill = PatternFill(start_color="4472C4", end_color="4472C4", fill_type="solid")
-    header_font = Font(bold=True, color="FFFFFF")
-    
-    for col_num, header in enumerate(headers, 1):
-        cell = ws.cell(row=1, column=col_num)
-        cell.value = header
-        cell.fill = header_fill
-        cell.font = header_font
-        cell.alignment = Alignment(horizontal="center", vertical="center")
-    
-    logger.info(f"Adding {len(results)} rows of data")
-    
-    for row_num, result in enumerate(results, 2):
-        ws.cell(row=row_num, column=1).value = result.get("itunes_id", "")
-        ws.cell(row=row_num, column=2).value = result.get("title", "")
-        ws.cell(row=row_num, column=3).value = result.get("host_name", "")
-        ws.cell(row=row_num, column=4).value = result.get("host_email", "")
-        ws.cell(row=row_num, column=5).value = result.get("contact_name", "")
-        ws.cell(row=row_num, column=6).value = result.get("contact_email", "")
-        ws.cell(row=row_num, column=7).value = result.get("artist", "")
-        ws.cell(row=row_num, column=8).value = result.get("description", "")
-        ws.cell(row=row_num, column=9).value = result.get("primary_genre", "")
-        ws.cell(row=row_num, column=10).value = result.get("total_episodes", 0)
-        ws.cell(row=row_num, column=11).value = result.get("track_count", 0)
-        ws.cell(row=row_num, column=12).value = result.get("release_date", "")
-        ws.cell(row=row_num, column=13).value = result.get("country", "")
-        ws.cell(row=row_num, column=14).value = result.get("feed_url", "")
-        ws.cell(row=row_num, column=15).value = result.get("itunes_url", "")
-        ws.cell(row=row_num, column=16).value = result.get("total_episodes", 0)
-        ws.cell(row=row_num, column=17).value = result.get("extracted_at", "")
-    
-    for col in ['A', 'B', 'C', 'D', 'E', 'F', 'G', 'H', 'I', 'J', 'K', 'L', 'M', 'N', 'O', 'P', 'Q']:
-        ws.column_dimensions[col].width = 20
-    
+def save_excel_file(results: List[Dict[str, Any]]):
+    """Save results to Excel file"""
     try:
-        wb.save(filename)
-        logger.info(f"Excel file saved successfully: {filename}")
+        wb = Workbook()
+        ws = wb.active
+        ws.title = "Podcasts"
         
-        if os.path.exists(filename):
-            file_size = os.path.getsize(filename)
-            logger.info(f"File exists. Size: {file_size} bytes")
-        else:
-            logger.error(f"File was not created: {filename}")
+        headers = [
+            "iTunes ID", "Title", "Host Name", "Host Email", "Contact Name",
+            "Contact Email", "Artist", "Description", "Genre", "Track Count",
+            "Release Date", "Country", "Feed URL", "iTunes URL", "Total Episodes", "Extracted At"
+        ]
+        
+        header_fill = PatternFill(start_color="4472C4", end_color="4472C4", fill_type="solid")
+        header_font = Font(bold=True, color="FFFFFF")
+        
+        for col_num, header in enumerate(headers, 1):
+            cell = ws.cell(row=1, column=col_num)
+            cell.value = header
+            cell.fill = header_fill
+            cell.font = header_font
+        
+        for row_num, result in enumerate(results, 2):
+            ws.cell(row=row_num, column=1).value = result.get("itunes_id")
+            ws.cell(row=row_num, column=2).value = result.get("title")
+            ws.cell(row=row_num, column=3).value = result.get("host_name")
+            ws.cell(row=row_num, column=4).value = result.get("host_email")
+            ws.cell(row=row_num, column=5).value = result.get("contact_name")
+            ws.cell(row=row_num, column=6).value = result.get("contact_email")
+            ws.cell(row=row_num, column=7).value = result.get("artist")
+            ws.cell(row=row_num, column=8).value = result.get("description")
+            ws.cell(row=row_num, column=9).value = result.get("primary_genre")
+            ws.cell(row=row_num, column=10).value = result.get("track_count")
+            ws.cell(row=row_num, column=11).value = result.get("release_date")
+            ws.cell(row=row_num, column=12).value = result.get("country")
+            ws.cell(row=row_num, column=13).value = result.get("feed_url")
+            ws.cell(row=row_num, column=14).value = result.get("itunes_url")
+            ws.cell(row=row_num, column=15).value = result.get("total_episodes")
+            ws.cell(row=row_num, column=16).value = result.get("extracted_at")
+        
+        for col in range(1, 17):
+            ws.column_dimensions[chr(64 + col)].width = 20
+        
+        filename = "podcast_results.xlsx"
+        wb.save(filename)
+        logger.info(f"Excel saved: {filename}")
+        
     except Exception as e:
-        logger.error(f"Error saving Excel file: {str(e)}", exc_info=True)
+        logger.error(f"Error saving Excel: {str(e)}")
 
 
 async def run():
-    input_data = {}
     input_file = os.getenv("APIFY_INPUT_FILE")
+    input_data = {}
     
     if input_file and os.path.exists(input_file):
         with open(input_file, 'r') as f:
             input_data = json.load(f)
     
     if not input_data:
-        input_data = {"mode": "search", "searchQuery": "technology", "country": "US", "maxResults": 5, "includeEpisodes": True}
+        input_data = {
+            "mode": "search",
+            "searchQuery": "technology",
+            "country": "US",
+            "maxResults": 5,
+            "includeEpisodes": True
+        }
     
-    logger.info(f"Starting with input: {json.dumps(input_data)}")
+    logger.info(f"Input: {json.dumps(input_data)}")
     
     intelligence = PodcastIntelligencePro()
     await intelligence.initialize()
     
     try:
         results = await intelligence.main(input_data)
-        logger.info(f"Successfully processed {len(results)} podcasts")
+        logger.info(f"Extracted {len(results)} podcasts")
         
         if results:
-            excel_filename = "podcast_results.xlsx"
-            create_excel(results, excel_filename)
-            logger.info(f"Excel export complete")
-        else:
-            logger.warning("No results to export")
-            
+            save_excel_file(results)
+            print(json.dumps(results, default=str, indent=2))
+        
     except Exception as e:
-        logger.error(f"Fatal error: {str(e)}", exc_info=True)
+        logger.error(f"Error: {str(e)}", exc_info=True)
     finally:
         await intelligence.cleanup()
 
 
 if __name__ == "__main__":
     asyncio.run(run())
+``
