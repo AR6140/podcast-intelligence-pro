@@ -1,0 +1,80 @@
+{
+  "title": "Podcast Intelligence Pro Input",
+  "type": "object",
+  "schemaVersion": 1,
+  "properties": {
+    "mode": {
+      "title": "Scraping Mode",
+      "description": "Choose how to find podcasts",
+      "type": "string",
+      "enum": ["search", "direct_urls", "lookup_ids"],
+      "default": "search"
+    },
+    "searchQuery": {
+      "title": "Search Query",
+      "description": "Search term for podcasts (required in 'search' mode). Examples: 'technology', 'business marketing', 'health fitness'",
+      "type": "string",
+      "default": "technology"
+    },
+    "country": {
+      "title": "Country Code",
+      "description": "iTunes store country code (US, GB, CA, AU, FR, DE, ES, IT, JP)",
+      "type": "string",
+      "default": "US",
+      "enum": ["US", "GB", "CA", "AU", "FR", "DE", "ES", "IT", "JP"]
+    },
+    "language": {
+      "title": "Language (Optional)",
+      "description": "Language filter (en, es, fr, de, it, ja, pt)",
+      "type": "string"
+    },
+    "genreId": {
+      "title": "Genre ID (Optional)",
+      "description": "iTunes genre ID for filtering. Common: Comedy (1303), News (1311), Business (1321), Technology (1318), True Crime (1488), Sports (1545), Health & Fitness (1512)",
+      "type": "integer"
+    },
+    "maxResults": {
+      "title": "Max Results",
+      "description": "Maximum number of podcasts to return (1-200)",
+      "type": "integer",
+      "minimum": 1,
+      "maximum": 200,
+      "default": 50
+    },
+    "feedUrls": {
+      "title": "RSS Feed URLs",
+      "description": "List of podcast RSS feed URLs (required in 'direct_urls' mode)",
+      "type": "array",
+      "items": {
+        "type": "string"
+      }
+    },
+    "podcastIds": {
+      "title": "iTunes Podcast IDs",
+      "description": "List of iTunes podcast IDs to lookup (required in 'lookup_ids' mode). Example: [1535809341, 1291409993]",
+      "type": "array",
+      "items": {
+        "type": "integer"
+      }
+    },
+    "includeEpisodes": {
+      "title": "Include Episodes",
+      "description": "Extract full episode data from RSS feeds (recommended for comprehensive data)",
+      "type": "boolean",
+      "default": true
+    },
+    "maxEpisodesPerPodcast": {
+      "title": "Max Episodes Per Podcast (Optional)",
+      "description": "Limit number of episodes to extract per podcast (leave empty for all). Useful for very large feeds.",
+      "type": "integer",
+      "minimum": 1
+    },
+    "debugMode": {
+      "title": "Debug Mode",
+      "description": "Enable detailed logging for troubleshooting",
+      "type": "boolean",
+      "default": false
+    }
+  },
+  "required": ["mode"]
+}
