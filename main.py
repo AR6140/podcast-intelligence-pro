@@ -3,11 +3,13 @@ import json
 import logging
 import os
 import sys
+import re
 from typing import List, Dict, Any, Optional
 from datetime import datetime
 from urllib.parse import urlencode
 import httpx
 import feedparser
+from bs4 import BeautifulSoup
 
 logging.basicConfig(level=logging.INFO, stream=sys.stdout)
 logger = logging.getLogger(__name__)
@@ -59,6 +61,7 @@ class PodcastIntelligencePro:
                         "track_count": result.get("trackCount", 0),
                         "release_date": result.get("releaseDate"),
                         "itunes_url": result.get("collectionViewUrl"),
+                        "host_name": result.get("artistName"),
                     }
                     podcasts.append(podcast)
             
@@ -101,6 +104,42 @@ class PodcastIntelligencePro:
             logger.error(f"Error parsing RSS: {str(e)}")
             return {"rss_data": {}, "episodes": [], "total_episodes": 0}
     
+    async def scrape_podcast_website(self, podcast_url: str) -> Dict[str, Any]:
+        try:
+            if not podcast_url or not podcast_url.startswith("http"):
+                return {}
+            
+            response = await self.client.get(podcast_url, follow_redirects=True, timeout=10)
+            response.raise_for_status()
+            
+            soup = BeautifulSoup(response.text, "html.parser")
+            text = soup.get_text()
+            
+            contact_info = {}
+            
+            email_pattern = r'\b[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Z|a-z]{2,}\b'
+            emails = re.findall(email_pattern, text)
+            
+            if emails:
+                contact_info["contact_email"] = emails[0]
+            
+            mailto_links = soup.find_all("a", href=re.compile(r"^mailto:"))
+            if mailto_links:
+                email = mailto_links[0].get("href").replace("mailto:", "").split("?")[0]
+                if email and "@" in email:
+                    contact_info["host_email"] = email
+            
+            name_pattern = r'(?:Hosted by|Host|Creator|Created by)\s+([A-Z][a-z]+ (?:[A-Z][a-z]+)?)'
+            names = re.findall(name_pattern, text)
+            if names:
+                contact_info["contact_name"] = names[0]
+            
+            return contact_info
+            
+        except Exception as e:
+            logger.warning(f"Error scraping website: {str(e)}")
+            return {}
+    
     async def enrich_podcast_data(self, podcast: Dict[str, Any], include_episodes: bool = True,
                                   max_episodes: Optional[int] = None) -> Dict[str, Any]:
         enriched = podcast.copy()
@@ -110,6 +149,10 @@ class PodcastIntelligencePro:
             enriched["rss_data"] = rss_result.get("rss_data", {})
             enriched["episodes"] = rss_result.get("episodes", [])
             enriched["total_episodes"] = rss_result.get("total_episodes", 0)
+        
+        if podcast.get("itunes_url"):
+            website_data = await self.scrape_podcast_website(podcast.get("itunes_url"))
+            enriched.update(website_data)
         
         enriched["extracted_at"] = datetime.utcnow().isoformat()
         return enriched
