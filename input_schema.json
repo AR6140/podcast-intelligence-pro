@@ -36,7 +36,7 @@
       "title": "Genre ID (Optional)",
       "description": "iTunes genre ID",
       "type": "integer",
-      "editor": "textfield"
+      "editor": "number"
     },
     "maxResults": {
       "title": "Max Results",
@@ -45,7 +45,7 @@
       "minimum": 1,
       "maximum": 200,
       "default": 50,
-      "editor": "textfield"
+      "editor": "number"
     },
     "feedUrls": {
       "title": "RSS Feed URLs",
@@ -76,7 +76,7 @@
       "description": "Limit episodes per podcast",
       "type": "integer",
       "minimum": 1,
-      "editor": "textfield"
+      "editor": "number"
     },
     "debugMode": {
       "title": "Debug Mode",
