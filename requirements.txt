@@ -1,4 +1,4 @@
-apify==0.11.2
+apify~=2.0
 httpx==0.25.0
 feedparser==6.0.10
 beautifulsoup4==4.12.2
