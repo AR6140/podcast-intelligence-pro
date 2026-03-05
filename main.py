@@ -7,8 +7,6 @@ from datetime import datetime
 from urllib.parse import urlencode
 import httpx
 import feedparser
-from bs4 import BeautifulSoup
-import re
 
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
@@ -17,7 +15,6 @@ class PodcastIntelligencePro:
     def __init__(self):
         self.itunes_base_url = "https://itunes.apple.com"
         self.client = None
-        self.debug_mode = False
         
     async def initialize(self):
         self.client = httpx.AsyncClient(timeout=30.0)
@@ -42,7 +39,6 @@ class PodcastIntelligencePro:
                 params["lang"] = language
             
             url = f"{self.itunes_base_url}/search?{urlencode(params)}"
-            
             response = await self.client.get(url)
             response.raise_for_status()
             data = response.json()
@@ -67,12 +63,12 @@ class PodcastIntelligencePro:
             
             return podcasts
         except Exception as e:
-            logger.error(f"Error: {str(e)}")
+            logger.error(f"Error searching iTunes: {str(e)}")
             return []
     
     async def parse_rss_feed(self, feed_url: str, max_episodes: Optional[int] = None) -> Dict[str, Any]:
         try:
-            response = await self.client.get(feed_url, follow_redirects=True)
+            response = await self.client.get(feed_url, follow_redirects=True, timeout=15)
             response.raise_for_status()
             feed = feedparser.parse(response.text)
             
@@ -117,7 +113,6 @@ class PodcastIntelligencePro:
         return enriched
     
     async def main(self, input_data: Dict[str, Any]) -> List[Dict[str, Any]]:
-        self.debug_mode = input_data.get("debugMode", False)
         mode = input_data.get("mode", "search")
         podcasts = []
         
