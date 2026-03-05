@@ -13,14 +13,14 @@
     },
     "searchQuery": {
       "title": "Search Query",
-      "description": "Search term for podcasts (required in 'search' mode). Examples: 'technology', 'business marketing', 'health fitness'",
+      "description": "Search term for podcasts. Examples: technology, business marketing",
       "type": "string",
       "default": "technology",
       "editor": "textinput"
     },
     "country": {
       "title": "Country Code",
-      "description": "iTunes store country code (US, GB, CA, AU, FR, DE, ES, IT, JP)",
+      "description": "iTunes country code",
       "type": "string",
       "default": "US",
       "enum": ["US", "GB", "CA", "AU", "FR", "DE", "ES", "IT", "JP"],
@@ -28,19 +28,19 @@
     },
     "language": {
       "title": "Language (Optional)",
-      "description": "Language filter (en, es, fr, de, it, ja, pt)",
+      "description": "Language filter",
       "type": "string",
       "editor": "textinput"
     },
     "genreId": {
       "title": "Genre ID (Optional)",
-      "description": "iTunes genre ID for filtering. Common: Comedy (1303), News (1311), Business (1321), Technology (1318), True Crime (1488), Sports (1545), Health & Fitness (1512)",
+      "description": "iTunes genre ID",
       "type": "integer",
       "editor": "number"
     },
     "maxResults": {
       "title": "Max Results",
-      "description": "Maximum number of podcasts to return (1-200)",
+      "description": "Maximum podcasts to return",
       "type": "integer",
       "minimum": 1,
       "maximum": 200,
@@ -49,7 +49,7 @@
     },
     "feedUrls": {
       "title": "RSS Feed URLs",
-      "description": "List of podcast RSS feed URLs (required in 'direct_urls' mode)",
+      "description": "List of RSS feed URLs",
       "type": "array",
       "items": {
         "type": "string"
@@ -58,7 +58,7 @@
     },
     "podcastIds": {
       "title": "iTunes Podcast IDs",
-      "description": "List of iTunes podcast IDs to lookup (required in 'lookup_ids' mode). Example: [1535809341, 1291409993]",
+      "description": "List of iTunes podcast IDs",
       "type": "array",
       "items": {
         "type": "integer"
@@ -67,21 +67,21 @@
     },
     "includeEpisodes": {
       "title": "Include Episodes",
-      "description": "Extract full episode data from RSS feeds (recommended for comprehensive data)",
+      "description": "Extract episode data",
       "type": "boolean",
       "default": true,
       "editor": "checkbox"
     },
     "maxEpisodesPerPodcast": {
-      "title": "Max Episodes Per Podcast (Optional)",
-      "description": "Limit number of episodes to extract per podcast (leave empty for all). Useful for very large feeds.",
+      "title": "Max Episodes Per Podcast",
+      "description": "Limit episodes per podcast",
       "type": "integer",
       "minimum": 1,
       "editor": "number"
     },
     "debugMode": {
       "title": "Debug Mode",
-      "description": "Enable detailed logging for troubleshooting",
+      "description": "Enable detailed logging",
       "type": "boolean",
       "default": false,
       "editor": "checkbox"
@@ -89,5 +89,3 @@
   },
   "required": ["mode"]
 }
-```
-
